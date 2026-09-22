@@ -10,103 +10,122 @@ on:
 env:
   APP_NAME: lab-github-actions
   REGISTRY: docker.io
-
+  
 jobs:
   build:
-    name: Build
     runs-on: ubuntu-latest
-    env:
-      BUILD_TARGET: productio
+    outputs:
+      image-tag: ${{ steps.tag.outputs.value }}   # ← expone el output del job
     steps:
-      - name: Generar tag de imagen
-        id: tag           # ← necesario para referenciarlo después
+      - name: Generar tag
+        id: tag
         run: |
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           echo "value=$SHORT_SHA" >> $GITHUB_OUTPUT
 
-      - name: Usar el tag
-        run: |
-          echo "Tag: ${{ steps.tag.outputs.value }}"
-
-      - name: Usar variables
-        env:                  # ← nivel step (solo en este step)
-          STEP_VAR: valor-local
-        run: |
-          echo "App: $APP_NAME"
-          echo "Target: $BUILD_TARGET"
-          echo "Step var: $STEP_VAR"
-
-      - name: Checkout código
-        uses: actions/checkout@v4
-
-      - name: Build imagen
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: false
-
-      - name: Imprimir contexto
-        run: |
-          echo "SHA: ${{ github.sha }}"
-          echo "Branch: ${{ github.ref_name }}"
-          echo "Evento: ${{ github.event_name }}"
-          echo "Actor: ${{ github.actor }}"
-          echo "Runner OS: ${{ runner.os }}"
-
   scan:
-    name: Scan de seguridad (Trivy)
     runs-on: ubuntu-latest
     needs: build
     steps:
-      - name: Checkout código
-        uses: actions/checkout@v4
+      - name: Usar tag del job anterior
+        run: echo "Escaneando imagen con tag ${{ needs.build.outputs.image-tag }}"
 
-      - name: Build imagen para escaneo
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: false
-          load: true
-          tags: lab-github-actions:${{ github.sha }}
+# jobs:
+#   build:
+#     name: Build
+#     runs-on: ubuntu-latest
+#     env:
+#       BUILD_TARGET: productio
+#     steps:
+#       - name: Generar tag de imagen
+#         id: tag           # ← necesario para referenciarlo después
+#         run: |
+#           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+#           echo "value=$SHORT_SHA" >> $GITHUB_OUTPUT
 
-      - name: Escaneo Trivy
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: lab-github-actions:${{ github.sha }}
-          format: table
-          exit-code: '1'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
+#       - name: Usar el tag
+#         run: |
+#           echo "Tag: ${{ steps.tag.outputs.value }}"
 
-  push:
-    name: Push a Docker Hub
-    runs-on: ubuntu-latest
-    needs: scan
-    if: github.event_name != 'pull_request'
-    steps:
-      - name: Checkout código
-        uses: actions/checkout@v4
+#       - name: Usar variables
+#         env:                  # ← nivel step (solo en este step)
+#           STEP_VAR: valor-local
+#         run: |
+#           echo "App: $APP_NAME"
+#           echo "Target: $BUILD_TARGET"
+#           echo "Step var: $STEP_VAR"
 
-      - name: Login a Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+#       - name: Checkout código
+#         uses: actions/checkout@v4
 
-      - name: Build y push imagen
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/lab-github-actions:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/lab-github-actions:${{ github.sha }}
+#       - name: Build imagen
+#         uses: docker/build-push-action@v5
+#         with:
+#           context: .
+#           push: false
 
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    needs: scan
-    steps:
-      - name: Simular tests
-        run: echo "Tests pendientes — se implementan en el siguiente paso"
+#       - name: Imprimir contexto
+#         run: |
+#           echo "SHA: ${{ github.sha }}"
+#           echo "Branch: ${{ github.ref_name }}"
+#           echo "Evento: ${{ github.event_name }}"
+#           echo "Actor: ${{ github.actor }}"
+#           echo "Runner OS: ${{ runner.os }}"
+
+#   scan:
+#     name: Scan de seguridad (Trivy)
+#     runs-on: ubuntu-latest
+#     needs: build
+#     steps:
+#       - name: Checkout código
+#         uses: actions/checkout@v4
+
+#       - name: Build imagen para escaneo
+#         uses: docker/build-push-action@v5
+#         with:
+#           context: .
+#           push: false
+#           load: true
+#           tags: lab-github-actions:${{ github.sha }}
+
+#       - name: Escaneo Trivy
+#         uses: aquasecurity/trivy-action@master
+#         with:
+#           image-ref: lab-github-actions:${{ github.sha }}
+#           format: table
+#           exit-code: '1'
+#           ignore-unfixed: true
+#           vuln-type: 'os,library'
+#           severity: 'CRITICAL,HIGH'
+
+#   push:
+#     name: Push a Docker Hub
+#     runs-on: ubuntu-latest
+#     needs: scan
+#     if: github.event_name != 'pull_request'
+#     steps:
+#       - name: Checkout código
+#         uses: actions/checkout@v4
+
+#       - name: Login a Docker Hub
+#         uses: docker/login-action@v3
+#         with:
+#           username: ${{ secrets.DOCKERHUB_USERNAME }}
+#           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+#       - name: Build y push imagen
+#         uses: docker/build-push-action@v5
+#         with:
+#           context: .
+#           push: true
+#           tags: |
+#             ${{ secrets.DOCKERHUB_USERNAME }}/lab-github-actions:latest
+#             ${{ secrets.DOCKERHUB_USERNAME }}/lab-github-actions:${{ github.sha }}
+
+#   test:
+#     name: Test
+#     runs-on: ubuntu-latest
+#     needs: scan
+#     steps:
+#       - name: Simular tests
+#         run: echo "Tests pendientes — se implementan en el siguiente paso"
