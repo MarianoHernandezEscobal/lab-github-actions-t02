@@ -1,1 +1,2 @@
 const awsKey = "AKIAIOSFODNN7ABCDEFG";
+const awsKey = "AKIAIOSFODNN7ABCDEFG";
