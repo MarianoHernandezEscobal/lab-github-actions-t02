@@ -18,6 +18,16 @@ jobs:
     env:
       BUILD_TARGET: productio
     steps:
+      - name: Generar tag de imagen
+        id: tag           # ← necesario para referenciarlo después
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "value=$SHORT_SHA" >> $GITHUB_OUTPUT
+
+      - name: Usar el tag
+        run: |
+          echo "Tag: ${{ steps.tag.outputs.value }}"
+
       - name: Usar variables
         env:                  # ← nivel step (solo en este step)
           STEP_VAR: valor-local
@@ -25,7 +35,7 @@ jobs:
           echo "App: $APP_NAME"
           echo "Target: $BUILD_TARGET"
           echo "Step var: $STEP_VAR"
-          
+
       - name: Checkout código
         uses: actions/checkout@v4
 
