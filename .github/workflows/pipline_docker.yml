@@ -7,11 +7,25 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  APP_NAME: lab-github-actions
+  REGISTRY: docker.io
+
 jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    env:
+      BUILD_TARGET: productio
     steps:
+      - name: Usar variables
+        env:                  # ← nivel step (solo en este step)
+          STEP_VAR: valor-local
+        run: |
+          echo "App: $APP_NAME"
+          echo "Target: $BUILD_TARGET"
+          echo "Step var: $STEP_VAR"
+          
       - name: Checkout código
         uses: actions/checkout@v4
 
